@@ -1,0 +1,1 @@
+this is a list of words. in this list of words there is a frequency that is easy to calculate by hand so we can make sure that the code is running properly
