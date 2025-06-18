@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar } from "./avatar";
 
 export const TopNav: React.FC = () => {
   return (
@@ -7,7 +8,8 @@ export const TopNav: React.FC = () => {
         <Link className="transition-colors hover:text-neutral-400" href="/">
           typist
         </Link>
-        <div className="flex gap-5">
+        <div className="flex gap-5 items-cetner">
+          <Avatar />
           {/*   user/account management chip */}
           {/*   scores chip */}
           {/*   settings */}
