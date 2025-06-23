@@ -6,8 +6,8 @@ import { Cursor } from "./cursor";
 
 interface TypingProps {
   text: string;
-  onStart: () => string;
-  onFinish: (id: string) => void;
+  onStart: () => Promise<string>;
+  onFinish: ({ id, value }: { id: string; value: string }) => Promise<void>;
 }
 
 type CharStatus = "correct" | "incorrect" | undefined;
@@ -32,7 +32,9 @@ export const Typing: React.FC<TypingProps> = ({ text, onStart, onFinish }) => {
       }
 
       if (!startedRef.current) {
-        idRef.current = onStart();
+        onStart().then((id) => {
+          idRef.current = id;
+        });
         startedRef.current = true;
       }
 
@@ -115,15 +117,19 @@ export const Typing: React.FC<TypingProps> = ({ text, onStart, onFinish }) => {
 
     setInput(value);
 
-    if (value.split(" ").length === words.length && idRef.current && startedRef.current) {
-      onFinish(idRef.current);
+    const valueWords = value.split(" ");
+    if (
+      valueWords.length === words.length &&
+      valueWords[valueWords.length - 1].length ===
+      words[words.length - 1].length &&
+      idRef.current &&
+      startedRef.current
+    ) {
+      onFinish({ id: idRef.current, value });
+      startedRef.current = false;
       // TODO navigate to results page
     }
   };
-
-  const words = text.split(" ");
-  let inputIndex = 0;
-  let textIndex = 0;
 
   const chars: React.ReactNode[] = [];
 
@@ -131,15 +137,14 @@ export const Typing: React.FC<TypingProps> = ({ text, onStart, onFinish }) => {
     chars.unshift(<Cursor key="cursor" />);
   }
 
+  let inputIndex = 0;
+  const words = text.split(" ");
   words.forEach((word) => {
-    for (let i = 0; i < word.length; i++, textIndex++, inputIndex++) {
-      const char = word[i];
-      // if inputIndex > textIndex, we don't care about error state
-      const charStatus = inputIndex > textIndex ? undefined : status[textIndex];
-
+    // Handle typed words
+    for (let i = 0; i < word.length; i++) {
       chars.push(
         <span
-          key={`char-${textIndex}`}
+          key={`char-${inputIndex}`}
           className={cva(["select-none"], {
             variants: {
               status: {
@@ -148,40 +153,39 @@ export const Typing: React.FC<TypingProps> = ({ text, onStart, onFinish }) => {
                 undefined: ["text-neutral-600"],
               },
             },
-          })({ status: charStatus })}
+          })({ status: status[inputIndex] })}
         >
-          {char}
+          {word[i]}
         </span>,
       );
 
       if (chars.length === input.length) {
         chars.push(<Cursor key={`cursor-${chars.length}-${input.length}`} />);
       }
-    }
 
-    let extraChars = "";
-    while (inputIndex < input.length && input[inputIndex] !== " ") {
-      extraChars += input[inputIndex];
       inputIndex++;
     }
 
-    for (let i = 0; i < extraChars.length; i++) {
+    // Handle extra chars
+    while (inputIndex < input.length && input[inputIndex] !== " ") {
       chars.push(
         <span
-          key={`extra-${textIndex + i}`}
+          key={`extra-${inputIndex}`}
           className="text-red-300 select-none"
         >
-          {extraChars[i]}
+          {input[inputIndex]}
         </span>,
       );
 
       if (chars.length === input.length) {
         chars.push(<Cursor key={`cursor-${chars.length}`} />);
       }
+      inputIndex++;
     }
 
+    // Handle spaces between words
     chars.push(
-      <Fragment key={`space-${textIndex}`}>
+      <Fragment key={`space-${inputIndex}`}>
         <span className="whitespace-pre select-none"> </span>
         <wbr />
       </Fragment>,
@@ -191,7 +195,6 @@ export const Typing: React.FC<TypingProps> = ({ text, onStart, onFinish }) => {
       chars.push(<Cursor key={`cursor-${chars.length}`} />);
     }
 
-    textIndex++;
     inputIndex++;
   });
 
